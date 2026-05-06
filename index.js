@@ -7,7 +7,28 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
+const admin = require("firebase-admin");
+
+// Firebase is optional for routes that do not require auth. Avoid crashing the
+// function at startup if env configuration is missing or malformed.
+const firebaseServiceKey = process.env.FIREBASE_SERVICE_KEY;
+
+if (!admin.apps.length && firebaseServiceKey) {
+  try {
+    const decoded = Buffer.from(firebaseServiceKey, "base64").toString("utf8");
+    const serviceAccount = JSON.parse(decoded);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+  } catch (error) {
+    console.error("Firebase initialization failed:", error.message);
+  }
+} else if (!firebaseServiceKey) {
+  console.warn("FIREBASE_SERVICE_KEY is not set. Firebase Admin is disabled.");
+}
+
 const uri =
+  process.env.MONGODB_URI ||
   "mongodb+srv://ARTIFY:L89EWqO0X0LaGrKj@cluster0.1ezipje.mongodb.net/?appName=Cluster0";
 
 const client = new MongoClient(uri, {
@@ -261,10 +282,10 @@ async function run() {
       }
     });
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!",
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!",
+    // );
   } finally {
     // await client.close();
   }
@@ -275,6 +296,11 @@ app.get("/", (req, res) => {
   res.send("Hello ARTIFY!");
 });
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
+// Only listen if running locally (not on Vercel)
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+  app.listen(port, () => {
+    console.log(`Example app listening on port ${port}`);
+  });
+}
+
+module.exports = app;

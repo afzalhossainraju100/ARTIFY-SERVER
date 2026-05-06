@@ -4,3 +4,4 @@ build/
 .env
 .DS_Store
 artify-af9c3-firebase-adminsdk-fbsvc.json
+.vercel
